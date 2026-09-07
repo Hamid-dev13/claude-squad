@@ -140,6 +140,42 @@ Each profile has two fields:
 
 If no profiles are defined, Claude Squad uses `default_program` directly as the launch command (the default is `claude`).
 
+#### Themes
+
+Every color in the UI can be overridden from a `theme` object in the config file. Run `cs theme` to print the full default palette, ready to paste, and copy only the keys you want to change — anything you leave out keeps its default.
+
+```json
+{
+  "theme": {
+    "tab_active": "#ff8800",
+    "tab_inactive": { "light": "#cccccc", "dark": "#444444" },
+    "menu_text": "34"
+  }
+}
+```
+
+A color is either:
+
+- a hex value, `"#RRGGBB"` or `"#RGB"`;
+- an ANSI 256 index, `"0"` through `"255"`;
+- a `{"light": ..., "dark": ...}` pair, applied according to the terminal background. A single side is enough — the other one mirrors it.
+
+The keys, grouped by the area they affect:
+
+| Group     | Keys                                                                                                                                     |
+|-----------|------------------------------------------------------------------------------------------------------------------------------------------|
+| Tab bar   | `tab_active`, `tab_inactive`, `tab_border`                                                                                               |
+| Session list | `status_ready`, `status_paused`, `stat_added`, `stat_removed`, `text_primary`, `text_muted`, `text_footer`, `selection_bg`, `selection_fg`, `app_title_bg`, `app_title_fg` |
+| Menu bar  | `menu_key`, `menu_desc`, `menu_separator`, `menu_action_group`, `menu_text`                                                               |
+| Diff tab  | `diff_added`, `diff_removed`, `diff_hunk`                                                                                                |
+| Feedback  | `error`, `paused_hint`                                                                                                                   |
+| Overlays  | `overlay_accent`, `overlay_accent_fg`, `overlay_text`, `overlay_dim`, `overlay_shadow`, `confirm_border`                                  |
+| Help screen | `help_title`, `help_header`, `help_key`, `help_desc`                                                                                   |
+
+Note that `tab_active` and `tab_inactive` share the same default, so the tab bar looks unchanged until you set them to different values.
+
+An unparseable color is ignored and falls back to its default rather than aborting the launch. `cs debug` lists every rejected key.
+
 ### FAQs
 
 #### Failed to start new session

@@ -14,20 +14,11 @@ func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 	return border
 }
 
+// Tab borders are structural, not themeable. The colors applied to them live
+// in styles.go.
 var (
 	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
 	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
-	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle  = lipgloss.NewStyle().
-				Border(inactiveTabBorder, true).
-				BorderForeground(highlightColor).
-				AlignHorizontal(lipgloss.Center)
-	activeTabStyle = inactiveTabStyle.
-			Border(activeTabBorder, true).
-			AlignHorizontal(lipgloss.Center)
-	windowStyle = lipgloss.NewStyle().
-			BorderForeground(highlightColor).
-			Border(lipgloss.NormalBorder(), false, true, true, true)
 )
 
 const (

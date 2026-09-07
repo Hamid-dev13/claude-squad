@@ -2,6 +2,7 @@ package config
 
 import (
 	"claude-squad/log"
+	"claude-squad/theme"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,6 +45,19 @@ type Config struct {
 	BranchPrefix string `json:"branch_prefix"`
 	// Profiles is a list of named program profiles.
 	Profiles []Profile `json:"profiles,omitempty"`
+	// Theme overrides the default UI colors. Keys left out keep their default.
+	Theme *theme.Palette `json:"theme,omitempty"`
+}
+
+// ApplyTheme installs the configured palette and returns one error per
+// rejected color. A malformed color falls back to its default rather than
+// failing the launch, so the returned errors are informational.
+func (c *Config) ApplyTheme() []error {
+	errs := theme.Apply(c.Theme)
+	for _, err := range errs {
+		log.WarningLog.Printf("ignoring invalid theme color: %v", err)
+	}
+	return errs
 }
 
 // GetProgram returns the program to run. If Profiles is non-empty and

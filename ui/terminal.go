@@ -13,12 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var terminalPaneStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-
-var terminalFooterStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#808080", Dark: "#808080"})
-
 // terminalSession holds a cached tmux session for a specific instance.
 type terminalSession struct {
 	tmuxSession  *tmux.TmuxSession

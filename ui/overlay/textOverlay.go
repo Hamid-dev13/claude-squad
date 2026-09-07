@@ -2,7 +2,6 @@ package overlay
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // TextOverlay represents a text screen overlay
@@ -39,15 +38,8 @@ func (t *TextOverlay) HandleKeyPress(msg tea.KeyMsg) bool {
 
 // Render renders the text overlay
 func (t *TextOverlay) Render(opts ...WhitespaceOption) string {
-	// Create styles
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		Padding(1, 2).
-		Width(t.width)
-
 	// Apply the border style and return
-	return style.Render(t.content)
+	return textOverlayStyle.Width(t.width).Render(t.content)
 }
 
 func (t *TextOverlay) SetWidth(width int) {

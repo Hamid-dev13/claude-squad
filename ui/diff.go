@@ -9,12 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	AdditionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#22c55e"))
-	DeletionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ef4444"))
-	HunkStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#0ea5e9"))
-)
-
 type DiffPane struct {
 	viewport viewport.Model
 	diff     string

@@ -9,28 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	tiStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		Padding(1, 2)
-
-	tiTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("62")).
-			Bold(true).
-			MarginBottom(1)
-
-	tiButtonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7"))
-
-	tiFocusedButtonStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("62")).
-				Foreground(lipgloss.Color("0"))
-
-	tiDividerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
-)
-
 // TextInputOverlay represents a text input overlay with state management.
 type TextInputOverlay struct {
 	textarea      textarea.Model

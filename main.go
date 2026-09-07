@@ -9,6 +9,7 @@ import (
 	"claude-squad/session"
 	"claude-squad/session/git"
 	"claude-squad/session/tmux"
+	"claude-squad/theme"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -50,6 +51,8 @@ var (
 			}
 
 			cfg := config.LoadConfig()
+			// Rejected colors are logged, not fatal: `cs debug` lists them.
+			cfg.ApplyTheme()
 
 			// Program flag overrides config
 			program := cfg.GetProgram()
@@ -131,6 +134,33 @@ var (
 
 			fmt.Printf("Config: %s\n%s\n", filepath.Join(configDir, config.ConfigFileName), configJson)
 
+			for _, themeErr := range cfg.ApplyTheme() {
+				fmt.Printf("warning: %v\n", themeErr)
+			}
+
+			return nil
+		},
+	}
+
+	themeCmd = &cobra.Command{
+		Use:   "theme",
+		Short: "Print the default color palette, ready to paste into config.json",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			palette, err := json.MarshalIndent(map[string]theme.Palette{"theme": theme.Default()}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal default theme: %w", err)
+			}
+
+			configDir, err := config.GetConfigDir()
+			if err != nil {
+				return fmt.Errorf("failed to get config directory: %w", err)
+			}
+
+			fmt.Printf("Copy any of these keys into %s to override them.\n",
+				filepath.Join(configDir, config.ConfigFileName))
+			fmt.Printf("A value is either \"#RRGGBB\", an ANSI index \"0\"-\"255\", "+
+				"or {\"light\": ..., \"dark\": ...}.\n\n%s\n", palette)
+
 			return nil
 		},
 	}
@@ -160,6 +190,7 @@ func init() {
 	}
 
 	rootCmd.AddCommand(debugCmd)
+	rootCmd.AddCommand(themeCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(resetCmd)
 }

@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
 	"github.com/muesli/ansi"
 	"github.com/muesli/reflow/truncate"
@@ -101,8 +100,6 @@ func PlaceOverlay(
 
 	// Handle shadow if enabled
 	if shadow {
-		// Define shadow style and character
-		shadowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
 		shadowChar := shadowStyle.Render("░")
 
 		// Create shadow string with same dimensions as foreground

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // ProfilePicker is an embeddable component for selecting a profile.
@@ -69,19 +68,6 @@ func (pp *ProfilePicker) GetSelectedProfile() config.Profile {
 func (pp *ProfilePicker) HasMultiple() bool {
 	return len(pp.profiles) > 1
 }
-
-var (
-	ppLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("62")).
-			Bold(true)
-
-	ppSelectedStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("62")).
-			Foreground(lipgloss.Color("0"))
-
-	ppDimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
-)
 
 // Render renders the profile picker.
 func (pp *ProfilePicker) Render() string {

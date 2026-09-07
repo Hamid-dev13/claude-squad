@@ -3,6 +3,7 @@ package app
 import (
 	"claude-squad/log"
 	"claude-squad/session"
+	"claude-squad/theme"
 	"claude-squad/ui"
 	"claude-squad/ui/overlay"
 	"fmt"
@@ -120,12 +121,23 @@ func (h helpTypeInstanceCheckout) mask() uint32 {
 	return 1 << 3
 }
 
+// Help screen styles, rebuilt whenever the theme changes.
 var (
-	titleStyle  = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("#7D56F4"))
-	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#36CFC9"))
-	keyStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFCC00"))
-	descStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	titleStyle  lipgloss.Style
+	headerStyle lipgloss.Style
+	keyStyle    lipgloss.Style
+	descStyle   lipgloss.Style
 )
+
+func init() {
+	theme.OnRefresh(func() {
+		p := theme.Current()
+		titleStyle = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(p.HelpTitle.Lip())
+		headerStyle = lipgloss.NewStyle().Bold(true).Foreground(p.HelpHeader.Lip())
+		keyStyle = lipgloss.NewStyle().Bold(true).Foreground(p.HelpKey.Lip())
+		descStyle = lipgloss.NewStyle().Foreground(p.HelpDesc.Lip())
+	})
+}
 
 // showHelpScreen displays the help screen overlay if it hasn't been shown before
 func (m *home) showHelpScreen(helpType helpText, onDismiss func()) (tea.Model, tea.Cmd) {

@@ -15,44 +15,6 @@ import (
 const readyIcon = "● "
 const pausedIcon = "⏸ "
 
-var readyStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#51bd73", Dark: "#51bd73"})
-
-var addedLinesStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#51bd73", Dark: "#51bd73"})
-
-var removedLinesStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#de613e"))
-
-var pausedStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"})
-
-var titleStyle = lipgloss.NewStyle().
-	Padding(1, 1, 0, 1).
-	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-
-var listDescStyle = lipgloss.NewStyle().
-	Padding(0, 1, 1, 1).
-	Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
-
-var selectedTitleStyle = lipgloss.NewStyle().
-	Padding(1, 1, 0, 1).
-	Background(lipgloss.Color("#dde4f0")).
-	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#1a1a1a"})
-
-var selectedDescStyle = lipgloss.NewStyle().
-	Padding(0, 1, 1, 1).
-	Background(lipgloss.Color("#dde4f0")).
-	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#1a1a1a"})
-
-var mainTitle = lipgloss.NewStyle().
-	Background(lipgloss.Color("62")).
-	Foreground(lipgloss.Color("230"))
-
-var autoYesStyle = lipgloss.NewStyle().
-	Background(lipgloss.Color("#dde4f0")).
-	Foreground(lipgloss.Color("#1a1a1a"))
-
 type List struct {
 	items         []*session.Instance
 	selectedIdx   int
