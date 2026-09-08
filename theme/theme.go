@@ -156,6 +156,40 @@ func parseHex(value string) (r, g, b uint8, ok bool) {
 	return parsed[0], parsed[1], parsed[2], true
 }
 
+// mutedBlend is how much of a color survives when it is used as a large
+// surface rather than an accent. A full-width row painted in the raw color
+// would overpower its own text and wreck the diff stats' green and red.
+const mutedBlend = 0.30
+
+// Muted returns a dimmed version of c, blended toward the terminal's own
+// background, suitable as a fill behind text. It mirrors what the default
+// theme already does by hand: an accent of #A78BFA with a #3B2F5C band.
+//
+// ANSI indices cannot be blended — there is no RGB to interpolate — so they
+// are returned unchanged and will paint the surface at full strength.
+func (c Color) Muted() Color {
+	return Color{
+		Light: blend(c.Light, lightText, mutedBlend),
+		Dark:  blend(c.Dark, darkText, mutedBlend),
+	}
+}
+
+// blend mixes fg over bg at the given alpha, both given as hex.
+func blend(fg, bg string, alpha float64) string {
+	fr, fgn, fb, ok := parseHex(fg)
+	if !ok {
+		return fg
+	}
+	br, bgn, bb, ok := parseHex(bg)
+	if !ok {
+		return fg
+	}
+	mix := func(a, b uint8) uint8 {
+		return uint8(math.Round(alpha*float64(a) + (1-alpha)*float64(b)))
+	}
+	return fmt.Sprintf("#%02X%02X%02X", mix(fr, br), mix(fgn, bgn), mix(fb, bb))
+}
+
 func relativeLuminance(r, g, b uint8) float64 {
 	linear := func(v uint8) float64 {
 		s := float64(v) / 255

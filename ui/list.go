@@ -88,6 +88,16 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		descS = listDescStyle
 	}
 
+	// A tagged instance tints its own highlight band, replacing the theme's
+	// fixed selection background. The color is muted first: at full strength a
+	// full-width band would swallow the title and the diff stats' green and
+	// red, which keep their own foreground on top of it.
+	if tagged, ok := instanceThemeColor(i); ok && selected {
+		band := tagged.Muted().Lip()
+		titleS = titleS.Background(band)
+		descS = descS.Background(band)
+	}
+
 	// The instance's color takes over the first column of both lines. It
 	// replaces the leading space of the prefix instead of being prepended, so
 	// every width computation below — all of which keys off len(prefix) — stays

@@ -154,6 +154,56 @@ func TestContrastIsAlwaysValid(t *testing.T) {
 		"even an unparseable background must yield a usable text color")
 }
 
+func TestMutedDimsTowardTheTerminalBackground(t *testing.T) {
+	m := pair("#B45309", "#FBBF24").Muted()
+
+	assert.Equal(t, "#594719", m.Dark, "on a dark terminal the band darkens")
+	assert.Equal(t, "#E5C8B2", m.Light, "on a light terminal it pales instead")
+}
+
+// The muted band must stay far enough from the text drawn on it. The theme's
+// own hand-picked pair (#A78BFA accent, #3B2F5C band) is the reference for how
+// dim it should be.
+func TestMutedIsCloseToTheHandPickedBand(t *testing.T) {
+	m := pair("#874BFD", "#A78BFA").Muted()
+
+	r, g, b, ok := parseHex(m.Dark)
+	require.True(t, ok)
+	refR, refG, refB, ok := parseHex("#3B2F5C")
+	require.True(t, ok)
+
+	for _, d := range []int{
+		int(r) - int(refR), int(g) - int(refG), int(b) - int(refB),
+	} {
+		assert.LessOrEqual(t, abs(d), 16,
+			"each channel should land within 16 of the reference band, got %s", m.Dark)
+	}
+}
+
+func TestMutedIsDarkEnoughForLightText(t *testing.T) {
+	for _, entry := range DefaultInstanceColors() {
+		band := entry.Color.Muted()
+		assert.NoError(t, band.validate(), "entry %q", entry.Name)
+		assert.Equal(t, lightText, contrastFor(band.Dark),
+			"the dark-terminal band for %q must still take light text", entry.Name)
+		assert.Equal(t, darkText, contrastFor(band.Light),
+			"the light-terminal band for %q must still take dark text", entry.Name)
+	}
+}
+
+func TestMutedLeavesAnsiIndicesAlone(t *testing.T) {
+	// There is no RGB to interpolate, so the value passes through untouched
+	// rather than being silently mangled into an invalid color.
+	assert.Equal(t, mono("62"), mono("62").Muted())
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 func TestParseHex(t *testing.T) {
 	r, g, b, ok := parseHex("#FBBF24")
 	require.True(t, ok)

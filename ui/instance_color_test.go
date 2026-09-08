@@ -72,6 +72,39 @@ func TestInstanceColorDoesNotChangeRowWidth(t *testing.T) {
 	}
 }
 
+// The selected row's highlight band takes the session's color, dimmed. The
+// raw color is reserved for the marker and the tab.
+func TestSelectedRowUsesMutedInstanceColorAsBand(t *testing.T) {
+	amber, ok := theme.Default().InstanceColor("amber")
+	require.True(t, ok)
+
+	r := newTestRenderer()
+	selected := r.Render(newTestInstance(t, "session", "amber"), 1, true, false)
+
+	br, bg, bb, ok := hexToRGB(amber.Muted().Dark)
+	require.True(t, ok)
+	assert.Contains(t, selected, fmt.Sprintf("48;2;%d;%d;%d", br, bg, bb),
+		"the band should be the muted color")
+
+	fr, fg, fb, ok := hexToRGB(amber.Dark)
+	require.True(t, ok)
+	assert.NotContains(t, selected, fmt.Sprintf("48;2;%d;%d;%d", fr, fg, fb),
+		"the raw color would swallow the text and must not be used as a fill")
+}
+
+// An unselected row keeps the theme's own colors: only the marker is tinted.
+func TestUnselectedRowKeepsThemeBackground(t *testing.T) {
+	amber, ok := theme.Default().InstanceColor("amber")
+	require.True(t, ok)
+	br, bg, bb, _ := hexToRGB(amber.Muted().Dark)
+
+	r := newTestRenderer()
+	unselected := r.Render(newTestInstance(t, "session", "amber"), 1, false, false)
+
+	assert.NotContains(t, unselected, fmt.Sprintf("48;2;%d;%d;%d", br, bg, bb),
+		"an unselected row must not be banded")
+}
+
 func TestInstanceColorRendersMarker(t *testing.T) {
 	r := newTestRenderer()
 
