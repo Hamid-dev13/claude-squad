@@ -20,12 +20,18 @@ import (
 )
 
 var (
-	version     = "1.0.20"
-	programFlag string
-	autoYesFlag bool
-	daemonFlag  bool
-	binName     string
-	rootCmd     = &cobra.Command{
+	// version tracks the upstream release this fork is based on. bump-version.sh
+	// still parses and rewrites it, so keep it a bare semver.
+	version = "1.0.20"
+	// forkRevision marks builds of this fork. Without it `cs version` claims to
+	// be an upstream release it no longer matches.
+	forkRevision = "hamid.1"
+	forkRepoURL  = "https://github.com/Hamid-dev13/claude-squad"
+	programFlag  string
+	autoYesFlag  bool
+	daemonFlag   bool
+	binName      string
+	rootCmd      = &cobra.Command{
 		Use:   "claude-squad",
 		Short: "Claude Squad - Manage multiple AI agents like Claude Code, Aider, Codex, and Amp.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -169,8 +175,9 @@ var (
 		Use:   "version",
 		Short: "Print the version number",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("%s version %s\n", binName, version)
-			fmt.Printf("https://github.com/smtg-ai/claude-squad/releases/tag/v%s\n", version)
+			fmt.Printf("%s version %s-%s\n", binName, version, forkRevision)
+			fmt.Printf("fork of smtg-ai/claude-squad v%s\n", version)
+			fmt.Printf("%s\n", forkRepoURL)
 		},
 	}
 )

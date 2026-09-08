@@ -1,4 +1,15 @@
-# Claude Squad [![CI](https://github.com/smtg-ai/claude-squad/actions/workflows/build.yml/badge.svg)](https://github.com/smtg-ai/claude-squad/actions/workflows/build.yml) [![GitHub Release](https://img.shields.io/github/v/release/smtg-ai/claude-squad)](https://github.com/smtg-ai/claude-squad/releases/latest)
+# Claude Squad
+
+> **Personal fork** of [smtg-ai/claude-squad](https://github.com/smtg-ai/claude-squad), based on upstream `v1.0.20`.
+> It adds a configurable color theme (see [Themes](#themes)) — upstream hardcodes every color, and
+> [issue #300](https://github.com/smtg-ai/claude-squad/issues/300) asking for themes has been open since May 2026.
+> Not intended to be contributed back. `cs version` reports `1.0.20-hamid.1` to distinguish it from an upstream build.
+>
+> Build and install from source:
+>
+> ```sh
+> go build -o ~/.local/bin/cs .
+> ```
 
 [Claude Squad](https://smtg-ai.github.io/claude-squad/) is a terminal app that manages multiple [Claude Code](https://github.com/anthropics/claude-code), [Codex](https://github.com/openai/codex), [Gemini](https://github.com/google-gemini/gemini-cli) (and other local agents including [Aider](https://github.com/Aider-AI/aider)) in separate workspaces, allowing you to work on multiple tasks simultaneously.
 
