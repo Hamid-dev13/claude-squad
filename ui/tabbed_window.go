@@ -6,20 +6,49 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
-	border := lipgloss.RoundedBorder()
-	border.BottomLeft = left
-	border.Bottom = middle
-	border.BottomRight = right
-	return border
+func tabBorderWithBottom(base lipgloss.Border, left, middle, right string) lipgloss.Border {
+	base.BottomLeft = left
+	base.Bottom = middle
+	base.BottomRight = right
+	return base
 }
 
-// Tab borders are structural, not themeable. The colors applied to them live
-// in styles.go.
-var (
-	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
-	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
-)
+// tabBorders is one coherent set of box-drawing glyphs for the tab strip and
+// the pane below it. The junction characters have to match the line weight of
+// the borders they meet, otherwise a light ┴ lands on a heavy ┃ and the frame
+// looks broken at the seams.
+type tabBorders struct {
+	inactive lipgloss.Border
+	active   lipgloss.Border
+	window   lipgloss.Border
+
+	// Outer corners of the strip, substituted into the first and last tab.
+	firstInactive, lastInactive string
+	firstActive, lastActive     string
+}
+
+// roundedBorders is upstream's look: light lines with rounded corners.
+func roundedBorders() tabBorders {
+	return tabBorders{
+		inactive:      tabBorderWithBottom(lipgloss.RoundedBorder(), "┴", "─", "┴"),
+		active:        tabBorderWithBottom(lipgloss.RoundedBorder(), "┘", " ", "└"),
+		window:        lipgloss.NormalBorder(),
+		firstInactive: "├", lastInactive: "┤",
+		firstActive: "│", lastActive: "│",
+	}
+}
+
+// thickBorders trades the rounded corners for weight. Unicode box drawing has
+// no heavy rounded corner, so this set is necessarily square.
+func thickBorders() tabBorders {
+	return tabBorders{
+		inactive:      tabBorderWithBottom(lipgloss.ThickBorder(), "┻", "━", "┻"),
+		active:        tabBorderWithBottom(lipgloss.ThickBorder(), "┛", " ", "┗"),
+		window:        lipgloss.ThickBorder(),
+		firstInactive: "┣", lastInactive: "┫",
+		firstActive: "┃", lastActive: "┃",
+	}
+}
 
 const (
 	PreviewTab int = iota
@@ -212,20 +241,24 @@ func (w *TabbedWindow) String() string {
 
 	var renderedTabs []string
 
-	// A tagged instance fills the active tab with its color and carries it
-	// down to the frame below, so the session you are looking at is
-	// identifiable from the right-hand pane alone. Inactive tabs keep the
-	// theme color and stay unfilled: recoloring them too would erase the
-	// distinction between active and inactive.
+	// A tagged instance tints the active tab and carries its color down to the
+	// frame below, so the session you are looking at is identifiable from the
+	// right-hand pane alone. Inactive tabs keep the theme color and stay
+	// untinted: recoloring them too would erase the distinction.
+	//
+	// Only the interior is filled, and with the muted shade. Painting the
+	// border background as well would flood the corner glyphs, turning the
+	// rounded outline into a solid rectangle that reads as a blob sitting on
+	// top of the frame rather than a tab cut into it.
 	activeStyle, windowS := activeTabStyle, windowStyle
 	if c, ok := instanceThemeColor(w.instance); ok {
-		fill, text := c.Lip(), c.Contrast().Lip()
+		accent := c.Lip()
+		fill := c.Muted()
 		activeStyle = activeStyle.
-			Background(fill).
-			Foreground(text).
-			BorderForeground(fill).
-			BorderBackground(fill)
-		windowS = windowS.BorderForeground(fill)
+			Background(fill.Lip()).
+			Foreground(fill.Contrast().Lip()).
+			BorderForeground(accent)
+		windowS = windowS.BorderForeground(accent)
 	}
 
 	totalTabWidth := w.width + windowS.GetHorizontalFrameSize()
@@ -248,13 +281,13 @@ func (w *TabbedWindow) String() string {
 		}
 		border, _, _, _, _ := style.GetBorder()
 		if isFirst && isActive {
-			border.BottomLeft = "│"
+			border.BottomLeft = borders.firstActive
 		} else if isFirst {
-			border.BottomLeft = "├"
+			border.BottomLeft = borders.firstInactive
 		} else if isLast && isActive {
-			border.BottomRight = "│"
+			border.BottomRight = borders.lastActive
 		} else if isLast {
-			border.BottomRight = "┤"
+			border.BottomRight = borders.lastInactive
 		}
 		style = style.Border(border)
 		style = style.Width(width - style.GetHorizontalFrameSize())

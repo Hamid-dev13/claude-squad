@@ -49,6 +49,9 @@ var (
 
 	// Error bar.
 	errStyle lipgloss.Style
+
+	// borders is the glyph set the tab strip and the pane frame share.
+	borders tabBorders
 )
 
 // instanceColor resolves the color an instance is tagged with. The second
@@ -79,17 +82,22 @@ func init() {
 func refreshStyles() {
 	p := theme.Current()
 
+	borders = roundedBorders()
+	if p.BorderStyle == theme.BorderThick {
+		borders = thickBorders()
+	}
+
 	inactiveTabStyle = lipgloss.NewStyle().
-		Border(inactiveTabBorder, true).
+		Border(borders.inactive, true).
 		BorderForeground(p.TabInactive.Lip()).
 		AlignHorizontal(lipgloss.Center)
 	activeTabStyle = lipgloss.NewStyle().
-		Border(activeTabBorder, true).
+		Border(borders.active, true).
 		BorderForeground(p.TabActive.Lip()).
 		AlignHorizontal(lipgloss.Center)
 	windowStyle = lipgloss.NewStyle().
 		BorderForeground(p.TabBorder.Lip()).
-		Border(lipgloss.NormalBorder(), false, true, true, true)
+		Border(borders.window, false, true, true, true)
 
 	readyStyle = lipgloss.NewStyle().Foreground(p.StatusReady.Lip())
 	addedLinesStyle = lipgloss.NewStyle().Foreground(p.StatAdded.Lip())

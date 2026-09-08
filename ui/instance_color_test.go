@@ -271,10 +271,14 @@ func TestActiveTabIsFilledWithInstanceColor(t *testing.T) {
 	w.SetInstance(newTestInstance(t, "session", "amber"))
 	rendered := w.String()
 
-	assert.Contains(t, rendered, bgSequence(t, amber),
-		"the active tab should carry the color as a background, not just a border")
-	assert.Contains(t, rendered, fgSequence(t, amber.Contrast()),
-		"the label should use the contrasting text color")
+	assert.Contains(t, rendered, bgSequence(t, amber.Muted()),
+		"the tab's interior should be filled with the muted shade")
+	assert.Contains(t, rendered, fgSequence(t, amber.Muted().Contrast()),
+		"the label should use the text color that contrasts with the fill")
+	assert.Contains(t, rendered, fgSequence(t, amber),
+		"the outline should keep the raw accent")
+	assert.NotContains(t, rendered, bgSequence(t, amber),
+		"filling the border background would flood the rounded corners")
 }
 
 // Inactive tabs must not be filled, otherwise there is nothing left to tell

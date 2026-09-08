@@ -317,6 +317,40 @@ func TestPaletteUnmarshalInstanceColors(t *testing.T) {
 	assert.Equal(t, pair("#1D4ED8", "#60A5FA"), p.InstanceColors[1].Color)
 }
 
+func TestBorderStyleOverride(t *testing.T) {
+	merged, errs := Merge(Default(), &Palette{BorderStyle: BorderThick})
+	require.Empty(t, errs)
+	assert.Equal(t, BorderThick, merged.BorderStyle)
+}
+
+func TestBorderStyleRejectsUnknownValue(t *testing.T) {
+	merged, errs := Merge(Default(), &Palette{BorderStyle: "dotted"})
+
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0].Error(), "theme.border_style")
+	assert.Equal(t, BorderRounded, merged.BorderStyle,
+		"an unknown weight must keep the default rather than leaving the frame unset")
+}
+
+func TestBorderStyleDefaultsToRounded(t *testing.T) {
+	assert.Equal(t, BorderRounded, Default().BorderStyle,
+		"the fork must look like upstream until the key is set")
+
+	merged, errs := Merge(Default(), &Palette{})
+	require.Empty(t, errs)
+	assert.Equal(t, BorderRounded, merged.BorderStyle)
+}
+
+func TestPaletteRoundTripsBorderStyle(t *testing.T) {
+	data, err := json.Marshal(Palette{BorderStyle: BorderThick})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"border_style":"thick"}`, string(data))
+
+	var back Palette
+	require.NoError(t, json.Unmarshal(data, &back))
+	assert.Equal(t, BorderThick, back.BorderStyle)
+}
+
 func TestApplyRunsRegisteredHooks(t *testing.T) {
 	t.Cleanup(func() {
 		mu.Lock()

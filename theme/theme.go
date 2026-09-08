@@ -256,6 +256,21 @@ type Palette struct {
 	// fields above this is a list, and setting it replaces the defaults
 	// wholesale rather than merging entry by entry.
 	InstanceColors []NamedColor `json:"instance_colors,omitempty"`
+
+	// BorderStyle is the line weight of the tab bar and the pane frame:
+	// BorderRounded or BorderThick.
+	BorderStyle string `json:"border_style,omitempty"`
+}
+
+// Line weights available for the tab bar and pane frame. Unicode box drawing
+// has no heavy rounded corner, so thick borders are necessarily square.
+const (
+	BorderRounded = "rounded"
+	BorderThick   = "thick"
+)
+
+func validBorderStyle(v string) bool {
+	return v == BorderRounded || v == BorderThick
 }
 
 // NamedColor is one entry of the session color palette. The name is what gets
@@ -337,6 +352,18 @@ func (p Palette) MarshalJSON() ([]byte, error) {
 		buf.Write(value)
 	}
 
+	if p.BorderStyle != "" {
+		value, err := json.Marshal(p.BorderStyle)
+		if err != nil {
+			return nil, err
+		}
+		if buf.Len() > 1 {
+			buf.WriteByte(',')
+		}
+		buf.WriteString(`"border_style":`)
+		buf.Write(value)
+	}
+
 	buf.WriteByte('}')
 
 	return buf.Bytes(), nil
@@ -388,6 +415,7 @@ func Default() Palette {
 		HelpDesc:   mono("#FFFFFF"),
 
 		InstanceColors: DefaultInstanceColors(),
+		BorderStyle:    BorderRounded,
 	}
 }
 
@@ -482,6 +510,15 @@ func Merge(base Palette, overrides *Palette) (Palette, []error) {
 		}
 		if len(valid) > 0 {
 			base.InstanceColors = valid
+		}
+	}
+
+	if overrides.BorderStyle != "" {
+		if validBorderStyle(overrides.BorderStyle) {
+			base.BorderStyle = overrides.BorderStyle
+		} else {
+			errs = append(errs, fmt.Errorf("theme.border_style: %q is not %q or %q",
+				overrides.BorderStyle, BorderRounded, BorderThick))
 		}
 	}
 

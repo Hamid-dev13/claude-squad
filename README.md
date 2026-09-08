@@ -187,6 +187,12 @@ Note that `tab_active` and `tab_inactive` share the same default, so the tab bar
 
 An unparseable color is ignored and falls back to its default rather than aborting the launch. `cs debug` lists every rejected key.
 
+`border_style` sets the line weight of the tab bar and the pane frame — `"rounded"` (the default, light lines with rounded corners) or `"thick"`. Unicode box drawing has no heavy rounded corner, so thick borders are necessarily square; the junction glyphs switch weight along with the borders so the seams still line up.
+
+```json
+{ "theme": { "border_style": "thick" } }
+```
+
 #### Session colors
 
 Press `C` on a session to tag it with a color. The picker lists the palette with a swatch of each actual color; `↑`/`↓` moves, `enter` confirms, `esc` cancels, and the first entry clears the tag.
