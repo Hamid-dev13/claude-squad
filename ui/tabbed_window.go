@@ -212,10 +212,20 @@ func (w *TabbedWindow) String() string {
 
 	var renderedTabs []string
 
-	totalTabWidth := w.width + windowStyle.GetHorizontalFrameSize()
+	// A tagged instance colors the active tab and the frame below it, so the
+	// session you are looking at is identifiable from the right-hand pane
+	// alone. Inactive tabs keep the theme color: recoloring them too would
+	// erase the distinction between active and inactive.
+	activeStyle, windowS := activeTabStyle, windowStyle
+	if c, ok := instanceColor(w.instance); ok {
+		activeStyle = activeStyle.BorderForeground(c)
+		windowS = windowS.BorderForeground(c)
+	}
+
+	totalTabWidth := w.width + windowS.GetHorizontalFrameSize()
 	tabWidth := totalTabWidth / len(w.tabs)
 	lastTabWidth := totalTabWidth - tabWidth*(len(w.tabs)-1)
-	tabHeight := activeTabStyle.GetVerticalFrameSize() + 1 // get padding border margin size + 1 for character height
+	tabHeight := activeStyle.GetVerticalFrameSize() + 1 // get padding border margin size + 1 for character height
 
 	for i, t := range w.tabs {
 		width := tabWidth
@@ -226,7 +236,7 @@ func (w *TabbedWindow) String() string {
 		var style lipgloss.Style
 		isFirst, isLast, isActive := i == 0, i == len(w.tabs)-1, i == w.activeTab
 		if isActive {
-			style = activeTabStyle
+			style = activeStyle
 		} else {
 			style = inactiveTabStyle
 		}
@@ -255,9 +265,9 @@ func (w *TabbedWindow) String() string {
 	case TerminalTab:
 		content = w.terminal.String()
 	}
-	window := windowStyle.Render(
+	window := windowS.Render(
 		lipgloss.Place(
-			w.width, w.height-2-windowStyle.GetVerticalFrameSize()-tabHeight,
+			w.width, w.height-2-windowS.GetVerticalFrameSize()-tabHeight,
 			lipgloss.Left, lipgloss.Top, content))
 
 	return lipgloss.JoinVertical(lipgloss.Left, "\n", row, window)

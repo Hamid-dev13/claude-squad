@@ -52,6 +52,9 @@ type Instance struct {
 	AutoYes bool
 	// Prompt is the initial prompt to pass to the instance on startup
 	Prompt string
+	// Color is the name of the palette entry this instance is tagged with, as
+	// defined by theme.Palette.InstanceColors. Empty means untagged.
+	Color string
 
 	// DiffStats stores the current git diff statistics
 	diffStats *git.DiffStats
@@ -81,6 +84,7 @@ func (i *Instance) ToInstanceData() InstanceData {
 		UpdatedAt: time.Now(),
 		Program:   i.Program,
 		AutoYes:   i.AutoYes,
+		Color:     i.Color,
 	}
 
 	// Only include worktree data if gitWorktree is initialized
@@ -119,6 +123,7 @@ func FromInstanceData(data InstanceData) (*Instance, error) {
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
 		Program:   data.Program,
+		Color:     data.Color,
 		gitWorktree: git.NewGitWorktreeFromStorage(
 			data.Worktree.RepoPath,
 			data.Worktree.WorktreePath,

@@ -146,6 +146,47 @@ type Palette struct {
 	HelpHeader Color `json:"help_header"`
 	HelpKey    Color `json:"help_key"`
 	HelpDesc   Color `json:"help_desc"`
+
+	// InstanceColors are the colors a session can be tagged with. Unlike the
+	// fields above this is a list, and setting it replaces the defaults
+	// wholesale rather than merging entry by entry.
+	InstanceColors []NamedColor `json:"instance_colors,omitempty"`
+}
+
+// NamedColor is one entry of the session color palette. The name is what gets
+// stored in state.json, so re-theming a color keeps existing sessions tagged.
+type NamedColor struct {
+	Name  string `json:"name"`
+	Color Color  `json:"color"`
+}
+
+// DefaultInstanceColors returns the colors offered when tagging a session.
+func DefaultInstanceColors() []NamedColor {
+	return []NamedColor{
+		{"violet", pair("#6D28D9", "#A78BFA")},
+		{"blue", pair("#1D4ED8", "#60A5FA")},
+		{"cyan", pair("#0E7490", "#22D3EE")},
+		{"green", pair("#15803D", "#4ADE80")},
+		{"amber", pair("#B45309", "#FBBF24")},
+		{"orange", pair("#C2410C", "#FB923C")},
+		{"rose", pair("#BE123C", "#FB7185")},
+		{"slate", pair("#475569", "#94A3B8")},
+	}
+}
+
+// InstanceColor looks up a session color by name. The second return value is
+// false for an unknown name or an untagged session, in which case callers fall
+// back to the regular theme colors.
+func (p Palette) InstanceColor(name string) (Color, bool) {
+	if name == "" {
+		return Color{}, false
+	}
+	for _, c := range p.InstanceColors {
+		if c.Name == name {
+			return c.Color, true
+		}
+	}
+	return Color{}, false
 }
 
 // MarshalJSON writes only the colors that are actually set, in declaration
@@ -158,6 +199,7 @@ func (p Palette) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
 	for i := 0; i < typ.NumField(); i++ {
+		// InstanceColors is a list and is appended after the loop.
 		color, ok := val.Field(i).Interface().(Color)
 		if !ok || color.IsEmpty() {
 			continue
@@ -177,6 +219,19 @@ func (p Palette) MarshalJSON() ([]byte, error) {
 		buf.WriteByte(':')
 		buf.Write(value)
 	}
+
+	if len(p.InstanceColors) > 0 {
+		value, err := json.Marshal(p.InstanceColors)
+		if err != nil {
+			return nil, err
+		}
+		if buf.Len() > 1 {
+			buf.WriteByte(',')
+		}
+		buf.WriteString(`"instance_colors":`)
+		buf.Write(value)
+	}
+
 	buf.WriteByte('}')
 
 	return buf.Bytes(), nil
@@ -226,6 +281,8 @@ func Default() Palette {
 		HelpHeader: mono("#36CFC9"),
 		HelpKey:    mono("#FFCC00"),
 		HelpDesc:   mono("#FFFFFF"),
+
+		InstanceColors: DefaultInstanceColors(),
 	}
 }
 
@@ -284,6 +341,7 @@ func Merge(base Palette, overrides *Palette) (Palette, []error) {
 	typ := baseVal.Type()
 
 	for i := 0; i < typ.NumField(); i++ {
+		// InstanceColors is a list, not a Color, and is handled below.
 		over, ok := overVal.Field(i).Interface().(Color)
 		if !ok || over.IsEmpty() {
 			continue
@@ -295,5 +353,32 @@ func Merge(base Palette, overrides *Palette) (Palette, []error) {
 		}
 		baseVal.Field(i).Set(reflect.ValueOf(over))
 	}
+
+	// A custom session palette replaces the defaults instead of merging: the
+	// list is ordered and its length is meaningful, so a per-entry merge would
+	// make it impossible to offer fewer colors than the default eight.
+	if len(overrides.InstanceColors) > 0 {
+		valid := make([]NamedColor, 0, len(overrides.InstanceColors))
+		seen := make(map[string]bool, len(overrides.InstanceColors))
+		for i, entry := range overrides.InstanceColors {
+			switch {
+			case entry.Name == "":
+				errs = append(errs, fmt.Errorf("theme.instance_colors[%d]: name is required", i))
+			case seen[entry.Name]:
+				errs = append(errs, fmt.Errorf("theme.instance_colors[%d]: duplicate name %q", i, entry.Name))
+			default:
+				if err := entry.Color.validate(); err != nil {
+					errs = append(errs, fmt.Errorf("theme.instance_colors[%d] (%s): %w", i, entry.Name, err))
+					continue
+				}
+				seen[entry.Name] = true
+				valid = append(valid, entry)
+			}
+		}
+		if len(valid) > 0 {
+			base.InstanceColors = valid
+		}
+	}
+
 	return base, errs
 }

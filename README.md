@@ -187,6 +187,30 @@ Note that `tab_active` and `tab_inactive` share the same default, so the tab bar
 
 An unparseable color is ignored and falls back to its default rather than aborting the launch. `cs debug` lists every rejected key.
 
+#### Session colors
+
+Press `C` on a session to tag it with a color. The picker lists the palette with a swatch of each actual color; `↑`/`↓` moves, `enter` confirms, `esc` cancels, and the first entry clears the tag.
+
+A tagged session shows a colored marker down the left edge of its row, and colors the active tab and the pane frame while it is selected — so the session you are looking at is identifiable from the right-hand pane alone. Inactive tabs keep their theme color, otherwise the active/inactive distinction would be lost.
+
+The tag is stored in `~/.claude-squad/state.json` as the color's **name**, not its value, so re-theming a color updates every session already tagged with it. Untagged sessions write no extra key, and state files written before this feature existed load unchanged.
+
+The eight default colors are `violet`, `blue`, `cyan`, `green`, `amber`, `orange`, `rose` and `slate`. Replace them with `instance_colors`, which unlike the keys above is substituted wholesale rather than merged — so you can offer fewer than eight:
+
+```json
+{
+  "theme": {
+    "instance_colors": [
+      { "name": "urgent",  "color": "#ef4444" },
+      { "name": "review",  "color": { "light": "#B45309", "dark": "#FBBF24" } },
+      { "name": "backlog", "color": "#64748B" }
+    ]
+  }
+}
+```
+
+A tag naming a color the theme no longer defines renders as untagged rather than failing.
+
 ### FAQs
 
 #### Failed to start new session

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"claude-squad/session"
 	"claude-squad/theme"
 
 	"github.com/charmbracelet/lipgloss"
@@ -49,6 +50,25 @@ var (
 	// Error bar.
 	errStyle lipgloss.Style
 )
+
+// instanceMarker is the glyph drawn in an instance's own color, in the gutter
+// of every line of its row in the session list.
+const instanceMarker = "▌"
+
+// instanceColor resolves the color an instance is tagged with. The second
+// return value is false for a nil or untagged instance, and for a tag naming a
+// color the current theme no longer defines — callers then fall back to the
+// regular theme colors rather than rendering something arbitrary.
+func instanceColor(i *session.Instance) (lipgloss.TerminalColor, bool) {
+	if i == nil {
+		return nil, false
+	}
+	c, ok := theme.Current().InstanceColor(i.Color)
+	if !ok {
+		return nil, false
+	}
+	return c.Lip(), true
+}
 
 func init() {
 	theme.OnRefresh(refreshStyles)

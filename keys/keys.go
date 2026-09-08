@@ -32,6 +32,9 @@ const (
 	// Reorder keybindings
 	KeyMoveUp
 	KeyMoveDown
+
+	// KeyColor tags the selected instance with a color.
+	KeyColor
 )
 
 // GlobalKeyStringsMap is a global, immutable map string to keybinding.
@@ -52,6 +55,7 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"q":          KeyQuit,
 	"tab":        KeyTab,
 	"c":          KeyCheckout,
+	"C":          KeyColor,
 	"r":          KeyResume,
 	"p":          KeySubmit,
 	"?":          KeyHelp,
@@ -123,6 +127,10 @@ var GlobalkeyBindings = map[KeyName]key.Binding{
 	KeyMoveDown: key.NewBinding(
 		key.WithKeys("J"),
 		key.WithHelp("J", "move down"),
+	),
+	KeyColor: key.NewBinding(
+		key.WithKeys("C"),
+		key.WithHelp("C", "color"),
 	),
 
 	// -- Special keybindings --

@@ -119,6 +119,105 @@ func TestPaletteMarshalOmitsUnsetColors(t *testing.T) {
 		"unset colors must not be written back to config.json")
 }
 
+func TestDefaultInstanceColorsAreValidAndUnique(t *testing.T) {
+	seen := map[string]bool{}
+	for i, entry := range DefaultInstanceColors() {
+		assert.NotEmpty(t, entry.Name, "entry %d has no name", i)
+		assert.False(t, seen[entry.Name], "duplicate name %q", entry.Name)
+		assert.NoError(t, entry.Color.validate(), "entry %q", entry.Name)
+		seen[entry.Name] = true
+	}
+	assert.Len(t, seen, len(DefaultInstanceColors()))
+}
+
+func TestInstanceColorLookup(t *testing.T) {
+	p := Default()
+
+	c, ok := p.InstanceColor("amber")
+	require.True(t, ok)
+	assert.Equal(t, pair("#B45309", "#FBBF24"), c)
+
+	_, ok = p.InstanceColor("chartreuse")
+	assert.False(t, ok, "an unknown name must not resolve")
+
+	_, ok = p.InstanceColor("")
+	assert.False(t, ok, "an untagged instance must not resolve")
+}
+
+func TestMergeReplacesInstanceColorsWholesale(t *testing.T) {
+	merged, errs := Merge(Default(), &Palette{
+		InstanceColors: []NamedColor{
+			{"hot", mono("#ff0000")},
+			{"cold", mono("#0000ff")},
+		},
+	})
+	require.Empty(t, errs)
+
+	// Replacement, not a merge: offering fewer colors than the default eight
+	// has to be possible.
+	require.Len(t, merged.InstanceColors, 2)
+	_, ok := merged.InstanceColor("amber")
+	assert.False(t, ok, "a default color must be gone once the list is overridden")
+	c, ok := merged.InstanceColor("hot")
+	require.True(t, ok)
+	assert.Equal(t, mono("#ff0000"), c)
+}
+
+func TestMergeInstanceColorsRejectsBadEntries(t *testing.T) {
+	merged, errs := Merge(Default(), &Palette{
+		InstanceColors: []NamedColor{
+			{"good", mono("#00ff00")},
+			{"", mono("#00ff00")},
+			{"bad", mono("not-a-color")},
+			{"good", mono("#123456")},
+		},
+	})
+
+	require.Len(t, errs, 3)
+	assert.Contains(t, errs[0].Error(), "name is required")
+	assert.Contains(t, errs[1].Error(), "bad")
+	assert.Contains(t, errs[2].Error(), "duplicate")
+
+	require.Len(t, merged.InstanceColors, 1, "only the valid entry survives")
+	assert.Equal(t, "good", merged.InstanceColors[0].Name)
+}
+
+func TestMergeKeepsDefaultsWhenEveryInstanceColorIsInvalid(t *testing.T) {
+	merged, errs := Merge(Default(), &Palette{
+		InstanceColors: []NamedColor{{"bad", mono("nope")}},
+	})
+
+	require.Len(t, errs, 1)
+	assert.Equal(t, Default().InstanceColors, merged.InstanceColors,
+		"an entirely unusable list must leave the defaults in place rather than "+
+			"leaving no color to pick from")
+}
+
+func TestPaletteMarshalIncludesInstanceColors(t *testing.T) {
+	data, err := json.Marshal(Palette{
+		TabActive:      mono("#ff8800"),
+		InstanceColors: []NamedColor{{"hot", mono("#ff0000")}},
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t,
+		`{"tab_active":"#ff8800","instance_colors":[{"name":"hot","color":"#ff0000"}]}`,
+		string(data))
+}
+
+func TestPaletteUnmarshalInstanceColors(t *testing.T) {
+	var p Palette
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"instance_colors": [
+			{"name": "hot",  "color": "#ff0000"},
+			{"name": "cool", "color": {"light": "#1D4ED8", "dark": "#60A5FA"}}
+		]
+	}`), &p))
+
+	require.Len(t, p.InstanceColors, 2)
+	assert.Equal(t, mono("#ff0000"), p.InstanceColors[0].Color)
+	assert.Equal(t, pair("#1D4ED8", "#60A5FA"), p.InstanceColors[1].Color)
+}
+
 func TestApplyRunsRegisteredHooks(t *testing.T) {
 	t.Cleanup(func() {
 		mu.Lock()

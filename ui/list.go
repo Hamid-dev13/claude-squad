@@ -88,6 +88,23 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		descS = listDescStyle
 	}
 
+	// The instance's color takes over the first column of both lines. It
+	// replaces the leading space of the prefix instead of being prepended, so
+	// every width computation below — all of which keys off len(prefix) — stays
+	// correct. The row background has to be re-applied to the marker: the reset
+	// that ends its own color sequence would otherwise clear the highlight for
+	// the rest of the line.
+	markerColor, hasColor := instanceColor(i)
+	gutter := func(rowStyle lipgloss.Style) string {
+		if !hasColor {
+			return " "
+		}
+		return lipgloss.NewStyle().
+			Foreground(markerColor).
+			Background(rowStyle.GetBackground()).
+			Render(instanceMarker)
+	}
+
 	// add spinner next to title if it's running
 	var join string
 	switch i.Status {
@@ -108,7 +125,8 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 	}
 	title := titleS.Render(lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		lipgloss.Place(r.width-3, 1, lipgloss.Left, lipgloss.Center, fmt.Sprintf("%s %s", prefix, titleText)),
+		lipgloss.Place(r.width-3, 1, lipgloss.Left, lipgloss.Center,
+			fmt.Sprintf("%s%s %s", gutter(titleS), prefix[1:], titleText)),
 		" ",
 		join,
 	))
@@ -175,7 +193,8 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		spaces = strings.Repeat(" ", remainingWidth)
 	}
 
-	branchLine := fmt.Sprintf("%s %s-%s%s%s", strings.Repeat(" ", len(prefix)), branchIcon, branch, spaces, diff)
+	branchLine := fmt.Sprintf("%s%s %s-%s%s%s",
+		gutter(descS), strings.Repeat(" ", len(prefix)-1), branchIcon, branch, spaces, diff)
 
 	// join title and subtitle
 	text := lipgloss.JoinVertical(
