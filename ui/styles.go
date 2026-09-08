@@ -51,10 +51,6 @@ var (
 	errStyle lipgloss.Style
 )
 
-// instanceMarker is the glyph drawn in an instance's own color, in the gutter
-// of every line of its row in the session list.
-const instanceMarker = "▌"
-
 // instanceColor resolves the color an instance is tagged with. The second
 // return value is false for a nil or untagged instance, and for a tag naming a
 // color the current theme no longer defines — callers then fall back to the
@@ -99,18 +95,22 @@ func refreshStyles() {
 	addedLinesStyle = lipgloss.NewStyle().Foreground(p.StatAdded.Lip())
 	removedLinesStyle = lipgloss.NewStyle().Foreground(p.StatRemoved.Lip())
 	pausedStyle = lipgloss.NewStyle().Foreground(p.StatusPaused.Lip())
+	// Horizontal padding is deliberately absent: the list renderer supplies the
+	// left and right columns as separate blocks. Padding here would sit after
+	// the nested resets of the status icon and diff stats, and so would render
+	// unpainted — a gap at the row's edge.
 	titleStyle = lipgloss.NewStyle().
-		Padding(1, 1, 0, 1).
+		Padding(1, 0, 0, 0).
 		Foreground(p.TextPrimary.Lip())
 	listDescStyle = lipgloss.NewStyle().
-		Padding(0, 1, 1, 1).
+		Padding(0, 0, 1, 0).
 		Foreground(p.TextMuted.Lip())
 	selectedTitleStyle = lipgloss.NewStyle().
-		Padding(1, 1, 0, 1).
+		Padding(1, 0, 0, 0).
 		Background(p.SelectionBg.Lip()).
 		Foreground(p.SelectionFg.Lip())
 	selectedDescStyle = lipgloss.NewStyle().
-		Padding(0, 1, 1, 1).
+		Padding(0, 0, 1, 0).
 		Background(p.SelectionBg.Lip()).
 		Foreground(p.SelectionFg.Lip())
 	mainTitle = lipgloss.NewStyle().

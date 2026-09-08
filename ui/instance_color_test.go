@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -57,9 +55,9 @@ func renderedWidths(rendered string) []int {
 	return widths
 }
 
-// The marker takes over the prefix's leading space rather than being prepended,
-// precisely so the row keeps its width. If that ever regresses the list will
-// overflow its pane, which is hard to spot in a screenshot but obvious here.
+// The color bar is a column the row reserves whether or not it is tagged, so
+// tagging cannot change the row's width. If that regresses the list overflows
+// its pane, which is hard to spot in a screenshot but obvious here.
 func TestInstanceColorDoesNotChangeRowWidth(t *testing.T) {
 	r := newTestRenderer()
 
@@ -72,48 +70,149 @@ func TestInstanceColorDoesNotChangeRowWidth(t *testing.T) {
 	}
 }
 
-// The selected row's highlight band takes the session's color, dimmed. The
-// raw color is reserved for the marker and the tab.
-func TestSelectedRowUsesMutedInstanceColorAsBand(t *testing.T) {
+// sgrColor extracts the first truecolor directive with the given introducer
+// ("48;2;" for a background, "38;2;" for a foreground) from a rendered string.
+func sgrColor(rendered, introducer string) string {
+	idx := strings.Index(rendered, introducer)
+	if idx < 0 {
+		return ""
+	}
+	// Stop at the terminator, or the trailing reset ends up inside the fields.
+	rest := rendered[idx:]
+	if end := strings.IndexByte(rest, 'm'); end >= 0 {
+		rest = rest[:end]
+	}
+	fields := strings.Split(rest, ";")
+	if len(fields) < 5 {
+		return ""
+	}
+	return strings.Join(fields[:5], ";")
+}
+
+// bgSequence asks lipgloss what it actually emits for a color, rather than
+// formatting the hex ourselves: its conversion is not byte-exact, and #dde4f0
+// comes out as 221;227;240 rather than the 221;228;240 the hex implies.
+func bgSequence(t *testing.T, c theme.Color) string {
+	t.Helper()
+	seq := sgrColor(lipgloss.NewStyle().Background(c.Lip()).Render(" "), "48;2;")
+	require.NotEmpty(t, seq, "the probe should carry a background")
+	return seq
+}
+
+func fgSequence(t *testing.T, c theme.Color) string {
+	t.Helper()
+	seq := sgrColor(lipgloss.NewStyle().Foreground(c.Lip()).Render("x"), "38;2;")
+	require.NotEmpty(t, seq, "the probe should carry a foreground")
+	return seq
+}
+
+// cellBackgrounds walks a rendered line and returns the background in effect
+// for each printable cell, as the SGR fragment that set it. An empty string
+// means the terminal's own background.
+//
+// This exists because a styled block nested inside a styled row ends with a
+// reset that silently drops the row's background for everything after it. The
+// symptom is a black gap mid-row, which no amount of substring matching on the
+// rendered output reliably catches.
+func cellBackgrounds(line string) []string {
+	var (
+		cells   []string
+		current string
+		i       int
+	)
+	runes := []rune(line)
+	for i < len(runes) {
+		if runes[i] == '\x1b' && i+1 < len(runes) && runes[i+1] == '[' {
+			end := i + 2
+			for end < len(runes) && runes[end] != 'm' {
+				end++
+			}
+			if end >= len(runes) {
+				break
+			}
+			params := string(runes[i+2 : end])
+			switch {
+			case params == "" || params == "0":
+				current = ""
+			case strings.Contains(params, "49"):
+				current = ""
+			default:
+				if idx := strings.Index(params, "48;2;"); idx >= 0 {
+					rest := params[idx:]
+					// Keep only the five fields of the background directive.
+					fields := strings.Split(rest, ";")
+					if len(fields) >= 5 {
+						current = strings.Join(fields[:5], ";")
+					}
+				}
+			}
+			i = end + 1
+			continue
+		}
+		cells = append(cells, current)
+		i++
+	}
+	return cells
+}
+
+// The selected row's highlight band takes the session's color, dimmed, and it
+// must run edge to edge. The raw color is reserved for the leftmost column.
+func TestSelectedRowBandIsUnbroken(t *testing.T) {
 	amber, ok := theme.Default().InstanceColor("amber")
 	require.True(t, ok)
 
+	raw := bgSequence(t, amber)
+	muted := bgSequence(t, amber.Muted())
+
 	r := newTestRenderer()
-	selected := r.Render(newTestInstance(t, "session", "amber"), 1, true, false)
+	rendered := r.Render(newTestInstance(t, "session", "amber"), 1, true, false)
 
-	br, bg, bb, ok := hexToRGB(amber.Muted().Dark)
-	require.True(t, ok)
-	assert.Contains(t, selected, fmt.Sprintf("48;2;%d;%d;%d", br, bg, bb),
-		"the band should be the muted color")
+	for n, line := range strings.Split(rendered, "\n") {
+		cells := cellBackgrounds(line)
+		require.NotEmpty(t, cells, "line %d is empty", n)
 
-	fr, fg, fb, ok := hexToRGB(amber.Dark)
-	require.True(t, ok)
-	assert.NotContains(t, selected, fmt.Sprintf("48;2;%d;%d;%d", fr, fg, fb),
-		"the raw color would swallow the text and must not be used as a fill")
+		assert.Equal(t, raw, cells[0], "line %d: the first column is the color bar", n)
+		for col, bg := range cells[1:] {
+			assert.Equal(t, muted, bg,
+				"line %d, column %d: the band must not break — this is the black gap bug", n, col+1)
+		}
+	}
 }
 
-// An unselected row keeps the theme's own colors: only the marker is tinted.
-func TestUnselectedRowKeepsThemeBackground(t *testing.T) {
+// An untagged but selected row must be just as unbroken, on the theme's band.
+func TestSelectedUntaggedRowBandIsUnbroken(t *testing.T) {
+	band := bgSequence(t, theme.Default().SelectionBg)
+
+	r := newTestRenderer()
+	rendered := r.Render(newTestInstance(t, "session", ""), 1, true, false)
+
+	for n, line := range strings.Split(rendered, "\n") {
+		for col, bg := range cellBackgrounds(line) {
+			assert.Equal(t, band, bg, "line %d, column %d", n, col)
+		}
+	}
+}
+
+// An unselected tagged row carries the color bar and nothing else: the band is
+// what distinguishes the selected row, and tinting every row would lose it.
+func TestUnselectedTaggedRowShowsOnlyTheColorBar(t *testing.T) {
 	amber, ok := theme.Default().InstanceColor("amber")
 	require.True(t, ok)
-	br, bg, bb, _ := hexToRGB(amber.Muted().Dark)
+	raw := bgSequence(t, amber)
 
 	r := newTestRenderer()
-	unselected := r.Render(newTestInstance(t, "session", "amber"), 1, false, false)
+	rendered := r.Render(newTestInstance(t, "session", "amber"), 1, false, false)
 
-	assert.NotContains(t, unselected, fmt.Sprintf("48;2;%d;%d;%d", br, bg, bb),
-		"an unselected row must not be banded")
-}
+	for n, line := range strings.Split(rendered, "\n") {
+		cells := cellBackgrounds(line)
+		require.NotEmpty(t, cells, "line %d is empty", n)
 
-func TestInstanceColorRendersMarker(t *testing.T) {
-	r := newTestRenderer()
-
-	plain := r.Render(newTestInstance(t, "session", ""), 1, false, false)
-	tagged := r.Render(newTestInstance(t, "session", "amber"), 1, false, false)
-
-	assert.NotContains(t, plain, instanceMarker, "an untagged row has no marker")
-	assert.Equal(t, 2, strings.Count(tagged, instanceMarker),
-		"the marker should appear once per line of the row")
+		assert.Equal(t, raw, cells[0], "line %d: the bar runs the full height", n)
+		for col, bg := range cells[1:] {
+			assert.Empty(t, bg,
+				"line %d, column %d: the rest of an unselected row is unpainted", n, col+1)
+		}
+	}
 }
 
 func TestUnknownInstanceColorFallsBackToTheme(t *testing.T) {
@@ -172,15 +271,9 @@ func TestActiveTabIsFilledWithInstanceColor(t *testing.T) {
 	w.SetInstance(newTestInstance(t, "session", "amber"))
 	rendered := w.String()
 
-	// termenv emits truecolor backgrounds as "48;2;R;G;B".
-	r, g, b, ok := hexToRGB(amber.Dark)
-	require.True(t, ok)
-	assert.Contains(t, rendered, fmt.Sprintf("48;2;%d;%d;%d", r, g, b),
+	assert.Contains(t, rendered, bgSequence(t, amber),
 		"the active tab should carry the color as a background, not just a border")
-
-	tr, tg, tb, ok := hexToRGB(amber.Contrast().Dark)
-	require.True(t, ok)
-	assert.Contains(t, rendered, fmt.Sprintf("38;2;%d;%d;%d", tr, tg, tb),
+	assert.Contains(t, rendered, fgSequence(t, amber.Contrast()),
 		"the label should use the contrasting text color")
 }
 
@@ -189,8 +282,7 @@ func TestActiveTabIsFilledWithInstanceColor(t *testing.T) {
 func TestInactiveTabsKeepThemeColor(t *testing.T) {
 	themed, ok := theme.Default().InstanceColor("amber")
 	require.True(t, ok)
-	r, g, b, _ := hexToRGB(themed.Dark)
-	fill := fmt.Sprintf("48;2;%d;%d;%d", r, g, b)
+	fill := bgSequence(t, themed)
 
 	w := NewTabbedWindow(NewPreviewPane(), NewDiffPane(), NewTerminalPane())
 	w.SetSize(60, 20)
@@ -202,19 +294,4 @@ func TestInactiveTabsKeepThemeColor(t *testing.T) {
 		tabRow[strings.Index(tabRow, "Diff"):],
 		fill,
 		"the fill must stop at the active tab")
-}
-
-func hexToRGB(v string) (r, g, b uint8, ok bool) {
-	if len(v) != 7 || v[0] != '#' {
-		return 0, 0, 0, false
-	}
-	var parsed [3]uint64
-	for i := 0; i < 3; i++ {
-		n, err := strconv.ParseUint(v[1+i*2:3+i*2], 16, 8)
-		if err != nil {
-			return 0, 0, 0, false
-		}
-		parsed[i] = n
-	}
-	return uint8(parsed[0]), uint8(parsed[1]), uint8(parsed[2]), true
 }

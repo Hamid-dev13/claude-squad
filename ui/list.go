@@ -98,22 +98,14 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		descS = descS.Background(band)
 	}
 
-	// The instance's color takes over the first column of both lines. It
-	// replaces the leading space of the prefix instead of being prepended, so
-	// every width computation below — all of which keys off len(prefix) — stays
-	// correct. The row background has to be re-applied to the marker: the reset
-	// that ends its own color sequence would otherwise clear the highlight for
-	// the rest of the line.
+	// The row's left and right columns are rendered as their own blocks and
+	// joined on at the end, taking over from the horizontal padding the styles
+	// used to carry. Anything painted inside the row has to survive the nested
+	// resets that end the status icon and the diff stats: a reset clears the
+	// background too, so whatever followed it — the padding, or a marker's
+	// trailing text — came out unpainted. As separate blocks the columns bring
+	// their own opening sequence and the band runs edge to edge.
 	markerColor, hasColor := instanceColor(i)
-	gutter := func(rowStyle lipgloss.Style) string {
-		if !hasColor {
-			return " "
-		}
-		return lipgloss.NewStyle().
-			Foreground(markerColor).
-			Background(rowStyle.GetBackground()).
-			Render(instanceMarker)
-	}
 
 	// add spinner next to title if it's running
 	var join string
@@ -136,7 +128,7 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 	title := titleS.Render(lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		lipgloss.Place(r.width-3, 1, lipgloss.Left, lipgloss.Center,
-			fmt.Sprintf("%s%s %s", gutter(titleS), prefix[1:], titleText)),
+			fmt.Sprintf("%s %s", prefix, titleText)),
 		" ",
 		join,
 	))
@@ -203,8 +195,8 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		spaces = strings.Repeat(" ", remainingWidth)
 	}
 
-	branchLine := fmt.Sprintf("%s%s %s-%s%s%s",
-		gutter(descS), strings.Repeat(" ", len(prefix)-1), branchIcon, branch, spaces, diff)
+	branchLine := fmt.Sprintf("%s %s-%s%s%s",
+		strings.Repeat(" ", len(prefix)), branchIcon, branch, spaces, diff)
 
 	// join title and subtitle
 	text := lipgloss.JoinVertical(
@@ -213,7 +205,25 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		descS.Render(branchLine),
 	)
 
-	return text
+	// Join the two edge columns on. A tagged instance gets a solid bar of its
+	// raw color on the left, running the full height of the row including the
+	// padding lines; the right column only continues the row's own background.
+	height := len(strings.Split(text, "\n"))
+	column := func(style lipgloss.Style) string {
+		lines := make([]string, height)
+		for n := range lines {
+			lines[n] = style.Render(" ")
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	band := lipgloss.NewStyle().Background(titleS.GetBackground())
+	left := band
+	if hasColor {
+		left = lipgloss.NewStyle().Background(markerColor)
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, column(left), text, column(band))
 }
 
 func (l *List) String() string {
