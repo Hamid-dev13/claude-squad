@@ -8,8 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -94,6 +96,75 @@ func (c Color) validate() error {
 // Lip converts the color to something lipgloss styles accept.
 func (c Color) Lip() lipgloss.TerminalColor {
 	return lipgloss.AdaptiveColor{Light: c.Light, Dark: c.Dark}
+}
+
+// Text colors picked when a color is used as a background. Not pure black and
+// white: those read as harsh against the mid-tone fills of the palette.
+const (
+	darkText  = "#141414"
+	lightText = "#FAFAFA"
+)
+
+// Contrast returns a text color readable on top of c, chosen per side so a
+// light/dark pair still works on both terminal backgrounds.
+//
+// ANSI indices cannot be resolved to a luminance — the terminal's palette
+// decides what "62" actually looks like — so they conservatively get light
+// text, which suits the mid-to-dark tones an accent color usually is.
+func (c Color) Contrast() Color {
+	return Color{
+		Light: contrastFor(c.Light),
+		Dark:  contrastFor(c.Dark),
+	}
+}
+
+func contrastFor(value string) string {
+	r, g, b, ok := parseHex(value)
+	if !ok {
+		return lightText
+	}
+	// WCAG relative luminance. The 0.179 threshold is the point at which black
+	// and white text have equal contrast ratio against the background.
+	if relativeLuminance(r, g, b) > 0.179 {
+		return darkText
+	}
+	return lightText
+}
+
+// parseHex accepts "#RGB" and "#RRGGBB", the two forms validate allows.
+func parseHex(value string) (r, g, b uint8, ok bool) {
+	if !hexPattern.MatchString(value) {
+		return 0, 0, 0, false
+	}
+	digits := value[1:]
+	if len(digits) == 3 {
+		// Expand "#abc" to "#aabbcc".
+		digits = string([]byte{
+			digits[0], digits[0],
+			digits[1], digits[1],
+			digits[2], digits[2],
+		})
+	}
+	var parsed [3]uint8
+	for i := 0; i < 3; i++ {
+		v, err := strconv.ParseUint(digits[i*2:i*2+2], 16, 8)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		parsed[i] = uint8(v)
+	}
+	return parsed[0], parsed[1], parsed[2], true
+}
+
+func relativeLuminance(r, g, b uint8) float64 {
+	linear := func(v uint8) float64 {
+		s := float64(v) / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	return 0.2126*linear(r) + 0.7152*linear(g) + 0.0722*linear(b)
 }
 
 // Palette holds every themeable color in the application. Each field maps to

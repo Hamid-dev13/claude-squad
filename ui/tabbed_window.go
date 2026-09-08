@@ -212,14 +212,20 @@ func (w *TabbedWindow) String() string {
 
 	var renderedTabs []string
 
-	// A tagged instance colors the active tab and the frame below it, so the
-	// session you are looking at is identifiable from the right-hand pane
-	// alone. Inactive tabs keep the theme color: recoloring them too would
-	// erase the distinction between active and inactive.
+	// A tagged instance fills the active tab with its color and carries it
+	// down to the frame below, so the session you are looking at is
+	// identifiable from the right-hand pane alone. Inactive tabs keep the
+	// theme color and stay unfilled: recoloring them too would erase the
+	// distinction between active and inactive.
 	activeStyle, windowS := activeTabStyle, windowStyle
-	if c, ok := instanceColor(w.instance); ok {
-		activeStyle = activeStyle.BorderForeground(c)
-		windowS = windowS.BorderForeground(c)
+	if c, ok := instanceThemeColor(w.instance); ok {
+		fill, text := c.Lip(), c.Contrast().Lip()
+		activeStyle = activeStyle.
+			Background(fill).
+			Foreground(text).
+			BorderForeground(fill).
+			BorderBackground(fill)
+		windowS = windowS.BorderForeground(fill)
 	}
 
 	totalTabWidth := w.width + windowS.GetHorizontalFrameSize()

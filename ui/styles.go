@@ -60,14 +60,20 @@ const instanceMarker = "▌"
 // color the current theme no longer defines — callers then fall back to the
 // regular theme colors rather than rendering something arbitrary.
 func instanceColor(i *session.Instance) (lipgloss.TerminalColor, bool) {
-	if i == nil {
-		return nil, false
-	}
-	c, ok := theme.Current().InstanceColor(i.Color)
+	c, ok := instanceThemeColor(i)
 	if !ok {
 		return nil, false
 	}
 	return c.Lip(), true
+}
+
+// instanceThemeColor is instanceColor without the conversion, for callers that
+// also need the matching text color.
+func instanceThemeColor(i *session.Instance) (theme.Color, bool) {
+	if i == nil {
+		return theme.Color{}, false
+	}
+	return theme.Current().InstanceColor(i.Color)
 }
 
 func init() {

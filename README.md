@@ -191,7 +191,9 @@ An unparseable color is ignored and falls back to its default rather than aborti
 
 Press `C` on a session to tag it with a color. The picker lists the palette with a swatch of each actual color; `↑`/`↓` moves, `enter` confirms, `esc` cancels, and the first entry clears the tag.
 
-A tagged session shows a colored marker down the left edge of its row, and colors the active tab and the pane frame while it is selected — so the session you are looking at is identifiable from the right-hand pane alone. Inactive tabs keep their theme color, otherwise the active/inactive distinction would be lost.
+A tagged session shows a colored marker down the left edge of its row. While it is selected, the active tab is **filled** with the color and the pane frame takes the same tint — so the session you are looking at is identifiable from the right-hand pane alone. Inactive tabs stay unfilled and keep their theme color, otherwise the active/inactive distinction would be lost.
+
+The tab label switches to black or white depending on the fill's relative luminance, so a bright `amber` and a deep `blue` are both readable without configuring anything. ANSI indices are the exception: the terminal's palette decides what `"62"` actually looks like, so they cannot be measured and get light text.
 
 The tag is stored in `~/.claude-squad/state.json` as the color's **name**, not its value, so re-theming a color updates every session already tagged with it. Untagged sessions write no extra key, and state files written before this feature existed load unchanged.
 

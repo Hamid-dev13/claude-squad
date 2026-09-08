@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -124,4 +126,62 @@ func TestTabbedWindowUsesInstanceColor(t *testing.T) {
 	assert.NotEqual(t, plain, tagged, "a tagged instance must recolor the tab bar")
 	assert.Equal(t, renderedWidths(plain), renderedWidths(tagged),
 		"recoloring must not change the pane's geometry")
+}
+
+// The active tab is filled with the color rather than merely outlined, and the
+// label switches to a text color readable on that fill.
+func TestActiveTabIsFilledWithInstanceColor(t *testing.T) {
+	amber, ok := theme.Default().InstanceColor("amber")
+	require.True(t, ok)
+
+	w := NewTabbedWindow(NewPreviewPane(), NewDiffPane(), NewTerminalPane())
+	w.SetSize(60, 20)
+	w.SetInstance(newTestInstance(t, "session", "amber"))
+	rendered := w.String()
+
+	// termenv emits truecolor backgrounds as "48;2;R;G;B".
+	r, g, b, ok := hexToRGB(amber.Dark)
+	require.True(t, ok)
+	assert.Contains(t, rendered, fmt.Sprintf("48;2;%d;%d;%d", r, g, b),
+		"the active tab should carry the color as a background, not just a border")
+
+	tr, tg, tb, ok := hexToRGB(amber.Contrast().Dark)
+	require.True(t, ok)
+	assert.Contains(t, rendered, fmt.Sprintf("38;2;%d;%d;%d", tr, tg, tb),
+		"the label should use the contrasting text color")
+}
+
+// Inactive tabs must not be filled, otherwise there is nothing left to tell
+// the active tab apart.
+func TestInactiveTabsKeepThemeColor(t *testing.T) {
+	themed, ok := theme.Default().InstanceColor("amber")
+	require.True(t, ok)
+	r, g, b, _ := hexToRGB(themed.Dark)
+	fill := fmt.Sprintf("48;2;%d;%d;%d", r, g, b)
+
+	w := NewTabbedWindow(NewPreviewPane(), NewDiffPane(), NewTerminalPane())
+	w.SetSize(60, 20)
+	w.SetInstance(newTestInstance(t, "session", "amber"))
+
+	tabRow := strings.Split(w.String(), "\n")[3]
+	assert.Equal(t, 1, strings.Count(tabRow, "Preview"))
+	assert.NotContains(t,
+		tabRow[strings.Index(tabRow, "Diff"):],
+		fill,
+		"the fill must stop at the active tab")
+}
+
+func hexToRGB(v string) (r, g, b uint8, ok bool) {
+	if len(v) != 7 || v[0] != '#' {
+		return 0, 0, 0, false
+	}
+	var parsed [3]uint64
+	for i := 0; i < 3; i++ {
+		n, err := strconv.ParseUint(v[1+i*2:3+i*2], 16, 8)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		parsed[i] = n
+	}
+	return uint8(parsed[0]), uint8(parsed[1]), uint8(parsed[2]), true
 }

@@ -119,6 +119,55 @@ func TestPaletteMarshalOmitsUnsetColors(t *testing.T) {
 		"unset colors must not be written back to config.json")
 }
 
+func TestContrastPicksReadableText(t *testing.T) {
+	for _, tc := range []struct {
+		background string
+		want       string
+		why        string
+	}{
+		{"#FFFFFF", darkText, "white needs dark text"},
+		{"#000000", lightText, "black needs light text"},
+		{"#FBBF24", darkText, "amber is bright"},
+		{"#1D4ED8", lightText, "a deep blue is dark"},
+		{"#fff", darkText, "the short hex form is expanded"},
+		{"#4ADE80", darkText, "green reads as bright: luminance is green-weighted"},
+		{"62", lightText, "an ANSI index cannot be measured, so assume a dark accent"},
+	} {
+		got := contrastFor(tc.background)
+		assert.Equal(t, tc.want, got, "%s (%s)", tc.background, tc.why)
+	}
+}
+
+func TestContrastHandlesEachSideSeparately(t *testing.T) {
+	// A pair whose two sides need opposite text colors.
+	c := pair("#FBBF24", "#1D4ED8").Contrast()
+	assert.Equal(t, darkText, c.Light)
+	assert.Equal(t, lightText, c.Dark)
+}
+
+func TestContrastIsAlwaysValid(t *testing.T) {
+	// Whatever it returns has to be a color the rest of the theme accepts.
+	for _, entry := range DefaultInstanceColors() {
+		assert.NoError(t, entry.Color.Contrast().validate(), "entry %q", entry.Name)
+	}
+	assert.NoError(t, mono("nonsense").Contrast().validate(),
+		"even an unparseable background must yield a usable text color")
+}
+
+func TestParseHex(t *testing.T) {
+	r, g, b, ok := parseHex("#FBBF24")
+	require.True(t, ok)
+	assert.Equal(t, [3]uint8{0xFB, 0xBF, 0x24}, [3]uint8{r, g, b})
+
+	r, g, b, ok = parseHex("#abc")
+	require.True(t, ok)
+	assert.Equal(t, [3]uint8{0xAA, 0xBB, 0xCC}, [3]uint8{r, g, b},
+		"the short form expands each digit")
+
+	_, _, _, ok = parseHex("62")
+	assert.False(t, ok, "an ANSI index is not a hex color")
+}
+
 func TestDefaultInstanceColorsAreValidAndUnique(t *testing.T) {
 	seen := map[string]bool{}
 	for i, entry := range DefaultInstanceColors() {
